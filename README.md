@@ -40,6 +40,34 @@ Each script is a **skeleton** — you need to implement the logic:
 
 ## Getting Started
 
+> **Runtime:** This project has been developed and run on **Python 3.13** (see `.python-version` and `requires-python = ">=3.13"` in `pyproject.toml`).
+
+You can set up and run the project with either [`uv`](https://docs.astral.sh/uv/) (recommended) or `pip`.
+
+### Option A — with `uv` (recommended)
+
+`uv` reads `pyproject.toml` / `uv.lock` and provisions a pinned, reproducible environment (including Python 3.13 if needed).
+
+```bash
+# Create/sync the virtual environment from the lockfile
+uv sync
+
+# Run any script through the managed environment
+uv run ingestion.py
+
+# Run the test suite
+uv run pytest -v
+```
+
+If you prefer to activate the environment instead of prefixing each command:
+
+```bash
+source .venv/bin/activate   # uv creates .venv/ during `uv sync`
+python ingestion.py
+```
+
+### Option B — with `pip`
+
 ```bash
 pip install -r requirements.txt
 python ingestion.py
