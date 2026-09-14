@@ -104,12 +104,17 @@ def reload_module():
 
 
 @pytest.fixture
-def workspace_with_input(workspace):
-    """Workspace with two sample CSV files already in the input directory."""
+def workspace_with_input(workspace, reload_module):
+    """Workspace with two sample CSV files already ingested (Step 1 complete)."""
     df1 = make_sample_df(n=10, seed=1)
     df2 = make_sample_df(n=8, seed=2)
     df1.to_csv(workspace["paths"]["input"] / "dataset1.csv", index=False)
     df2.to_csv(workspace["paths"]["input"] / "dataset2.csv", index=False)
+
+    # Run ingestion so downstream steps (training, scoring) have their input ready
+    ingestion = reload_module("ingestion")
+    ingestion.merge_multiple_dataframe()
+
     return workspace
 
 
