@@ -589,3 +589,9 @@ zsdoc/data
 !/tests/_output/.gitkeep
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,windows,vim,git,emacs,visualstudiocode,pycharm,zsh,python,jupyternotebooks,flask,powershell
+
+# Runtime artifacts (recreated by tests/CI)
+ingesteddata/
+practicemodels/
+production_deployment/
+log.txt
