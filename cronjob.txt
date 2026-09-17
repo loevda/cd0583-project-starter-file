@@ -1,0 +1,1 @@
+*/10 * * * * cd /home/loevda/Documents/Proj/mlops/cd0583-project-starter-file && /home/loevda/Documents/Proj/mlops/cd0583-project-starter-file/.venv/bin/python fullprocess.py >> /tmp/cd0583.log 2>&1
