@@ -1,0 +1,170 @@
+{
+  "prediction": {
+    "predictions": [
+      0,
+      0
+    ]
+  },
+  "scoring": {
+    "score": 0.5714285714285714
+  },
+  "summarystats": [
+    165.65384615384616,
+    73.0,
+    0.0,
+    1502.923076923077,
+    955.0,
+    18.0,
+    26.884615384615383,
+    14.0,
+    1.0,
+    0.5769230769230769,
+    1.0,
+    1.0
+  ],
+  "diagnostics": {
+    "execution_time": {
+      "ingestion_seconds": 0.0021839141845703125,
+      "training_seconds": 0.0015041828155517578
+    },
+    "na_percentages": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "outdated_packages": [
+      {
+        "installed": "8.3.1",
+        "latest": "8.5.0",
+        "package": "click"
+      },
+      {
+        "installed": "0.12.1",
+        "latest": "0.12.1",
+        "package": "cycler"
+      },
+      {
+        "installed": "3.1.3",
+        "latest": "3.1.3",
+        "package": "Flask"
+      },
+      {
+        "installed": "23.0.0",
+        "latest": "26.2.0",
+        "package": "gunicorn"
+      },
+      {
+        "installed": "2.2.0",
+        "latest": "2.2.0",
+        "package": "itsdangerous"
+      },
+      {
+        "installed": "3.1.6",
+        "latest": "3.1.6",
+        "package": "Jinja2"
+      },
+      {
+        "installed": "1.5.3",
+        "latest": "1.6.0",
+        "package": "joblib"
+      },
+      {
+        "installed": "1.5.0",
+        "latest": "1.5.1",
+        "package": "kiwisolver"
+      },
+      {
+        "installed": "3.0.3",
+        "latest": "3.0.3",
+        "package": "MarkupSafe"
+      },
+      {
+        "installed": "3.10.8",
+        "latest": "3.11.2",
+        "package": "matplotlib"
+      },
+      {
+        "installed": "2.3.5",
+        "latest": "2.5.3",
+        "package": "numpy"
+      },
+      {
+        "installed": "2.3.3",
+        "latest": "3.0.6",
+        "package": "pandas"
+      },
+      {
+        "installed": "12.1.1",
+        "latest": "12.3.0",
+        "package": "Pillow"
+      },
+      {
+        "installed": "3.3.2",
+        "latest": "3.3.2",
+        "package": "pyparsing"
+      },
+      {
+        "installed": "9.1.1",
+        "latest": "9.1.1",
+        "package": "pytest"
+      },
+      {
+        "installed": "7.1.0",
+        "latest": "7.1.0",
+        "package": "pytest-cov"
+      },
+      {
+        "installed": "3.15.1",
+        "latest": "3.15.1",
+        "package": "pytest-mock"
+      },
+      {
+        "installed": "2.9.0.post0",
+        "latest": "2.9.0.post0",
+        "package": "python-dateutil"
+      },
+      {
+        "installed": "2026.1.post1",
+        "latest": "2026.3.post1",
+        "package": "pytz"
+      },
+      {
+        "installed": "2.34.2",
+        "latest": "2.34.2",
+        "package": "requests"
+      },
+      {
+        "installed": "1.8.0",
+        "latest": "1.9.1",
+        "package": "scikit-learn"
+      },
+      {
+        "installed": "1.16.3",
+        "latest": "1.18.1",
+        "package": "scipy"
+      },
+      {
+        "installed": "0.13.2",
+        "latest": "0.13.2",
+        "package": "seaborn"
+      },
+      {
+        "installed": "1.17.0",
+        "latest": "1.17.0",
+        "package": "six"
+      },
+      {
+        "installed": "3.6.0",
+        "latest": "3.7.0",
+        "package": "threadpoolctl"
+      },
+      {
+        "installed": "3.1.6",
+        "latest": "3.1.8",
+        "package": "Werkzeug"
+      }
+    ]
+  }
+}
