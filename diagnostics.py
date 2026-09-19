@@ -2,8 +2,10 @@ import pandas as pd
 import numpy as np
 import pickle
 import subprocess
+import sys
 import time
 import os
+import re
 import json
 
 ################## Load config.json and get environment variables
@@ -70,20 +72,63 @@ def execution_time():
 
 ################## Function to check dependencies
 def outdated_packages_list():
-    """Check installed vs latest versions of packages from requirements.txt."""
-    result = subprocess.run(
-        ["pip", "list", "--outdated"],
-        capture_output=True, text=True
-    )
-    output = result.stdout
-    # If no outdated packages found, fall back to full package list
-    if not output or len(output.strip().splitlines()) <= 1:
-        result = subprocess.run(
-            ["pip", "list"],
-            capture_output=True, text=True
-        )
-        output = result.stdout
-    return output
+    """Check installed vs latest versions of each package listed in requirements.txt."""
+    import importlib.metadata
+
+    req_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "requirements.txt")
+    with open(req_path, "r") as f:
+        lines = f.readlines()
+
+    # Extract package names (strip version specifiers like ==, >=, ~=, etc.)
+    packages = []
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        pkg_name = re.split(r"[=><!~\[;]", line)[0].strip()
+        if pkg_name:
+            packages.append(pkg_name)
+
+    # Get all outdated packages in one call, against THIS project's own environment.
+    # Plain "pip" resolves via PATH and can silently hit an unrelated global/conda
+    # install instead of this venv. `python -m pip` is the portable fix and works
+    # in any standard venv. It only fails here because
+    # this local dev environment is managed by uv, which doesn't install a pip
+    # module into .venv -- in that one case, fall back to uv's pip-compatible CLI.
+    outdated_map = {}
+    for cmd in (
+        [sys.executable, "-m", "pip", "list", "--outdated", "--format=json"],
+        ["uv", "pip", "list", "--outdated", "--format=json"],
+    ):
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            if result.returncode != 0:
+                continue
+            outdated_data = json.loads(result.stdout)
+            # Map lowercase name -> latest_version
+            outdated_map = {item["name"].lower(): item["latest_version"] for item in outdated_data}
+            break
+        except Exception:
+            continue
+
+    results = []
+    for pkg in packages:
+        # Get installed version
+        try:
+            installed = importlib.metadata.version(pkg)
+        except importlib.metadata.PackageNotFoundError:
+            installed = "not installed"
+
+        # Get latest version: from outdated map, or same as installed if not outdated
+        latest = outdated_map.get(pkg.lower(), installed)
+
+        results.append({
+            "package": pkg,
+            "installed": installed,
+            "latest": latest
+        })
+
+    return results
 
 
 if __name__ == '__main__':
