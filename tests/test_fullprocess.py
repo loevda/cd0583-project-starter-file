@@ -63,70 +63,70 @@ class TestNewDataDetection:
 
 
 class TestDriftDetection:
-    """Model drift = new F1 is lower than deployed score."""
+    """Deploy gate: redeployment requires the candidate's F1 to beat the deployed F1."""
 
-    def test_no_drift_no_retrain(self, workspace_with_trained_model, reload_module):
-        """If new score >= deployed score, no retraining should occur."""
+    def test_worse_candidate_no_redeploy(self, workspace_with_trained_model, reload_module):
+        """If the candidate's F1 is not higher than deployed, no redeployment should occur."""
         from tests.conftest import make_sample_df
 
-        # Add new data that won't cause drift
-        new_df = make_sample_df(n=5, seed=1)  # similar to existing data
+        # Add new data
+        new_df = make_sample_df(n=5, seed=1)
         new_df.to_csv(
             workspace_with_trained_model["paths"]["input"] / "dataset_extra.csv",
             index=False,
         )
 
-        # Set deployed score very low so new score won't be lower
-        (workspace_with_trained_model["paths"]["prod"] / "latestscore.txt").write_text("0.1")
+        # Set deployed score very high so the candidate can't beat it
+        (workspace_with_trained_model["paths"]["prod"] / "latestscore.txt").write_text("0.99")
 
         mod = reload_module("fullprocess")
 
-        import training
-        original_train = training.train_model
-        train_called = []
-        training.train_model = lambda *a, **kw: train_called.append(True)
+        import deployment
+        original_deploy = deployment.store_model_into_pickle
+        deploy_called = []
+        deployment.store_model_into_pickle = lambda *a, **kw: deploy_called.append(True)
 
         try:
             mod.run()
         except SystemExit:
             pass
         finally:
-            training.train_model = original_train
+            deployment.store_model_into_pickle = original_deploy
 
-        assert len(train_called) == 0, (
-            "Retraining occurred despite no drift (deployed score was already low)"
+        assert len(deploy_called) == 0, (
+            "Redeployment occurred despite the candidate not beating the deployed model"
         )
 
-    def test_drift_triggers_retrain(self, workspace_with_trained_model, reload_module):
-        """If new F1 < deployed F1, retraining must occur."""
+    def test_better_candidate_triggers_redeploy(self, workspace_with_trained_model, reload_module):
+        """If the candidate's F1 is higher than deployed, redeployment must occur."""
         from tests.conftest import make_sample_df
 
-        # Add very different new data to cause drift
+        # Add new data
         new_df = make_sample_df(n=50, seed=999)
         new_df.to_csv(
             workspace_with_trained_model["paths"]["input"] / "dataset_drift.csv",
             index=False,
         )
 
-        # Set deployed score high so new score will likely be lower
-        (workspace_with_trained_model["paths"]["prod"] / "latestscore.txt").write_text("0.99")
+        # Set deployed score very low so the candidate easily beats it
+        (workspace_with_trained_model["paths"]["prod"] / "latestscore.txt").write_text("0.1")
 
         mod = reload_module("fullprocess")
 
-        import training
-        original_train = training.train_model
-        train_called = []
-        training.train_model = lambda *a, **kw: train_called.append(True)
+        import deployment
+        original_deploy = deployment.store_model_into_pickle
+        deploy_called = []
+        deployment.store_model_into_pickle = lambda *a, **kw: deploy_called.append(True)
 
         try:
             mod.run()
         except SystemExit:
             pass
         finally:
-            training.train_model = original_train
+            deployment.store_model_into_pickle = original_deploy
 
-        assert len(train_called) > 0, (
-            "Retraining was NOT triggered despite drift (new score < 0.99)"
+        assert len(deploy_called) > 0, (
+            "Redeployment was NOT triggered despite the candidate beating the deployed model"
         )
 
 

@@ -70,11 +70,12 @@ def run():
       2. Ingest new data.
       3. Train a candidate model on the newly ingested data and score it against
          the test set (this becomes the new output_model_path/latestscore.txt).
-      4. Redeploy only if the candidate's F1 is higher than the currently
-         deployed F1 (or there is no prior deployment to compare against).
-      5. If redeployed: generate *2 artifacts (confusionmatrix2.png, apireturns2.txt)
-         from a real second run of reporting.py/apicalls.py against the newly
-         deployed model.
+      4. Generate *2 artifacts (confusionmatrix2.png, apireturns2.txt) from a real
+         second run of reporting.py/apicalls.py -- this documents the second-stage
+         run and happens regardless of the deploy decision below.
+      5. Redeploy only if the candidate's F1 is higher than the currently
+         deployed F1 (or there is no prior deployment to compare against). This is
+         an independent gate from step 4, not a precondition for it.
     """
     ################## Check and read new data
     # First, read ingestedfiles.txt from the production deployment directory.
@@ -112,8 +113,32 @@ def run():
     with open(candidate_score_file, "r") as f:
         candidate_score = float(f.read().strip())
 
-    ################## Deciding whether to proceed, part 2
-    # Deploy only if the candidate beats the currently deployed model.
+    ################## Second-stage evidence: reporting and API calls
+    # Document this second run with its own artifacts, independent of whether the
+    # candidate ends up deployed. Writes directly to the *2 submission names (not
+    # copying the first-run files) so this reflects a genuine second execution.
+    print("Running reporting and API calls for the second-stage run.")
+    try:
+        importlib.reload(reporting)
+        reporting.score_model(output_name="confusionmatrix2.png")
+        print("Saved submission artifact: confusionmatrix2.png")
+    except Exception as exc:  # noqa: BLE001 - reporting must not crash the pipeline
+        print(f"Reporting step failed: {exc}")
+
+    try:
+        subprocess.run(
+            [sys.executable, os.path.join(PROJECT_DIR, "apicalls.py"), "apireturns2.txt"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        print("Saved submission artifact: apireturns2.txt")
+    except Exception as exc:  # noqa: BLE001 - the API may not be running
+        print(f"API-call step failed: {exc}")
+
+    ################## Deciding whether to deploy
+    # Deploy only if the candidate beats the currently deployed model. This is a
+    # separate decision from the reporting step above, not a precondition for it.
     deployed_score = _read_deployed_score()
     if deployed_score is None:
         should_deploy = True
@@ -135,29 +160,6 @@ def run():
     ################## Re-deployment
     print("Redeploying the candidate model.")
     deployment.store_model_into_pickle(None)
-
-    ################## Diagnostics and reporting
-    # Run reporting and the API-call step for the redeployed model, writing directly
-    # to the *2 submission names (not copying the first-run files) so they reflect
-    # a genuine second run against the newly deployed model.
-    print("Running reporting and API calls for the redeployed model.")
-    try:
-        importlib.reload(reporting)
-        reporting.score_model(output_name="confusionmatrix2.png")
-        print("Saved submission artifact: confusionmatrix2.png")
-    except Exception as exc:  # noqa: BLE001 - reporting must not crash the pipeline
-        print(f"Reporting step failed: {exc}")
-
-    try:
-        subprocess.run(
-            [sys.executable, os.path.join(PROJECT_DIR, "apicalls.py"), "apireturns2.txt"],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        print("Saved submission artifact: apireturns2.txt")
-    except Exception as exc:  # noqa: BLE001 - the API may not be running
-        print(f"API-call step failed: {exc}")
 
 
 if __name__ == "__main__":
