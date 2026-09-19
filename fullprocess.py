@@ -3,7 +3,6 @@ import sys
 import json
 import glob
 import ast
-import shutil
 import importlib
 import subprocess
 
@@ -63,18 +62,19 @@ def _read_deployed_score():
         return None
 
 
-def _copy_submission_artifact(src, dst):
-    """Copy a freshly generated artifact to its ``_2`` submission name if present."""
-    if os.path.exists(src):
-        shutil.copy2(src, dst)
-        print(f"Saved submission artifact: {dst}")
-
-
 def run():
-    """Run the complete model scoring and monitoring process.
+    """Run the complete model retraining and redeployment process.
 
-    Flow: check for new data -> ingest -> check drift -> retrain/redeploy -> report.
-    Retraining and redeployment happen only when BOTH new data and model drift exist.
+    Flow:
+      1. Check for new data -> stop if none.
+      2. Ingest new data.
+      3. Train a candidate model on the newly ingested data and score it against
+         the test set (this becomes the new output_model_path/latestscore.txt).
+      4. Redeploy only if the candidate's F1 is higher than the currently
+         deployed F1 (or there is no prior deployment to compare against).
+      5. If redeployed: generate *2 artifacts (confusionmatrix2.png, apireturns2.txt)
+         from a real second run of reporting.py/apicalls.py against the newly
+         deployed model.
     """
     ################## Check and read new data
     # First, read ingestedfiles.txt from the production deployment directory.
@@ -98,71 +98,64 @@ def run():
     print(f"New data detected: {new_files}. Running ingestion.")
     ingestion.merge_multiple_dataframe()
 
-    ################## Checking for model drift
-    # Read the deployed model's score, then score the deployed model on the
-    # latest ingested data via scoring.py (which writes latestscore.txt).
-    #
+    ################## Train and score a candidate model
     # Reload scoring first so it re-reads the same config.json this process is
     # using. fullprocess may be re-imported in isolation (e.g. by the test suite)
     # without its dependencies being reloaded, which would otherwise leave scoring
     # pointing at a stale workspace and writing latestscore.txt to the wrong path.
-    deployed_score = _read_deployed_score()
+    print("Training a candidate model on the newly ingested data.")
+    training.train_model()
+
     importlib.reload(scoring)
     scoring.score_model()
-    new_score_file = os.path.join(output_model_path, "latestscore.txt")
-    with open(new_score_file, "r") as f:
-        new_score = float(f.read().strip())
-
-    # Drift = the new F1 score is lower than the deployed score.
-    if deployed_score is None:
-        drift_detected = True
-        print(
-            "No deployed score found; treating as drift to establish a baseline "
-            f"(new score={new_score})."
-        )
-    else:
-        drift_detected = new_score < deployed_score
-        print(
-            f"Deployed score={deployed_score}, new score={new_score}, "
-            f"drift_detected={drift_detected}."
-        )
+    candidate_score_file = os.path.join(output_model_path, "latestscore.txt")
+    with open(candidate_score_file, "r") as f:
+        candidate_score = float(f.read().strip())
 
     ################## Deciding whether to proceed, part 2
-    # If we found model drift, proceed. Otherwise, end the process here.
-    if not drift_detected:
-        print("No model drift detected. Stopping without retraining or redeploying.")
+    # Deploy only if the candidate beats the currently deployed model.
+    deployed_score = _read_deployed_score()
+    if deployed_score is None:
+        should_deploy = True
+        print(
+            f"No deployed score found; deploying candidate (score={candidate_score}) "
+            "to establish a baseline."
+        )
+    else:
+        should_deploy = candidate_score > deployed_score
+        print(
+            f"Candidate score={candidate_score}, deployed score={deployed_score}, "
+            f"should_deploy={should_deploy}."
+        )
+
+    if not should_deploy:
+        print("Candidate does not beat the deployed model. Stopping without redeploying.")
         return
 
     ################## Re-deployment
-    # Evidence of drift: re-run training on the latest ingested data and redeploy.
-    print("Model drift detected. Retraining and redeploying the model.")
-    training.train_model()
+    print("Redeploying the candidate model.")
     deployment.store_model_into_pickle(None)
 
     ################## Diagnostics and reporting
-    # Run reporting and the API-call step for the redeployed model, producing the
-    # final submission artifacts confusionmatrix2.png and apireturns2.txt.
+    # Run reporting and the API-call step for the redeployed model, writing directly
+    # to the *2 submission names (not copying the first-run files) so they reflect
+    # a genuine second run against the newly deployed model.
     print("Running reporting and API calls for the redeployed model.")
     try:
-        reporting.score_model()
-        _copy_submission_artifact(
-            os.path.join(output_model_path, "confusionmatrix.png"),
-            os.path.join(output_model_path, "confusionmatrix2.png"),
-        )
+        importlib.reload(reporting)
+        reporting.score_model(output_name="confusionmatrix2.png")
+        print("Saved submission artifact: confusionmatrix2.png")
     except Exception as exc:  # noqa: BLE001 - reporting must not crash the pipeline
         print(f"Reporting step failed: {exc}")
 
     try:
         subprocess.run(
-            [sys.executable, os.path.join(PROJECT_DIR, "apicalls.py")],
+            [sys.executable, os.path.join(PROJECT_DIR, "apicalls.py"), "apireturns2.txt"],
             check=False,
             capture_output=True,
             text=True,
         )
-        _copy_submission_artifact(
-            os.path.join(output_model_path, "apireturns.txt"),
-            os.path.join(output_model_path, "apireturns2.txt"),
-        )
+        print("Saved submission artifact: apireturns2.txt")
     except Exception as exc:  # noqa: BLE001 - the API may not be running
         print(f"API-call step failed: {exc}")
 

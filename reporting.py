@@ -20,11 +20,11 @@ prod_deployment_path = os.path.join(config['prod_deployment_path'])
 
 
 ############## Function for reporting
-def score_model():
+def score_model(output_name="confusionmatrix.png"):
     """Generate a confusion matrix plot using the deployed model and test data.
 
     Loads the deployed model from prod_deployment_path, predicts on test data,
-    and saves the confusion matrix as confusionmatrix.png in output_model_path.
+    and saves the confusion matrix as output_name in output_model_path.
     """
     # Load the deployed model
     model_file = os.path.join(prod_deployment_path, "trainedmodel.pkl")
@@ -57,7 +57,7 @@ def score_model():
 
     # Save the plot
     os.makedirs(model_path, exist_ok=True)
-    plt.savefig(os.path.join(model_path, "confusionmatrix.png"), dpi=100)
+    plt.savefig(os.path.join(model_path, output_name), dpi=100)
     plt.close()
 
 

@@ -1,12 +1,16 @@
 import requests
 import json
 import os
+import sys
 
 # Load config to get the output path
 with open('config.json', 'r') as f:
     config = json.load(f)
 
 model_path = os.path.join(config['output_model_path'])
+
+# Allow overriding the output filename via command-line argument
+output_filename = sys.argv[1] if len(sys.argv) > 1 else "apireturns.txt"
 
 # Specify the API base URL
 URL = "http://127.0.0.1:8000"
@@ -35,7 +39,7 @@ responses = {
 
 # Write the combined responses to the workspace
 os.makedirs(model_path, exist_ok=True)
-with open(os.path.join(model_path, "apireturns.txt"), "w") as f:
+with open(os.path.join(model_path, output_filename), "w") as f:
     json.dump(responses, f, indent=2)
 
-print("API calls complete. Results written to apireturns.txt")
+print(f"API calls complete. Results written to {output_filename}")
